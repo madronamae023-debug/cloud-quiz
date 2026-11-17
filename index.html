@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloud Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky:#d9f0fb; --blue:#7ec8ec; --deep:#3a8fc0; --ink:#24506b;
+  --pink:#ffc6d6; --white:#fff; --good:#3fae8a; --bad:#e2708a;
+}
+*{box-sizing:border-box}
+html{min-height:100%;background:var(--sky)}
+body{
+  margin:0;min-height:100vh;min-height:100dvh;
+  font-family:'Fredoka',system-ui,sans-serif; color:var(--ink);
+  background:linear-gradient(180deg,#c8eaf9 0%,var(--sky) 55%,#eaf7fd 100%) fixed;
+  display:flex;overflow-x:hidden;-webkit-tap-highlight-color:transparent;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+}
+button{touch-action:manipulation}
+.cloud{position:fixed;z-index:0;pointer-events:none;background:#fff;border-radius:999px;width:150px;height:46px}
+.cloud::before,.cloud::after{content:"";position:absolute;background:#fff;border-radius:50%}
+.cloud::before{width:64px;height:64px;top:-30px;left:24px}
+.cloud::after{width:84px;height:84px;top:-44px;left:66px}
+.c1{top:8%;left:6%}
+.c2{bottom:9%;right:6%;transform:scale(1.2);transform-origin:right bottom}
+.card{
+  position:relative;z-index:1;margin:auto;
+  width:100%;max-width:560px;background:var(--white);border-radius:32px;
+  padding:28px 24px;border:4px solid var(--blue);
+  box-shadow:0 10px 0 var(--blue);text-align:center;
+}
+h1{margin:0 0 6px;font-size:2rem;color:var(--deep)}
+p{margin:8px 0;line-height:1.5}
+input{
+  width:100%;font:inherit;font-size:1.1rem;padding:12px 16px;margin:14px 0;
+  border:3px solid var(--blue);border-radius:20px;text-align:center;color:var(--ink);text-transform:uppercase;
+}
+input:focus,button:focus-visible{outline:3px solid var(--pink);outline-offset:2px}
+button{
+  font:inherit;font-weight:600;font-size:1.05rem;cursor:pointer;
+  background:var(--blue);color:#fff;border:0;border-radius:999px;padding:12px 28px;
+  box-shadow:0 5px 0 var(--deep);
+}
+button:active{transform:translateY(3px);box-shadow:0 2px 0 var(--deep)}
+.hidden{display:none!important}
+.top{display:flex;justify-content:space-between;font-weight:500;font-size:.95rem}
+.bar{height:14px;background:var(--sky);border-radius:99px;margin:10px 0 18px;overflow:hidden}
+.bar i{display:block;height:100%;width:100%;background:var(--blue);border-radius:99px;transition:width 1s linear}
+.q{font-size:1.3rem;font-weight:600;margin:6px 0 16px}
+.choices{display:grid;gap:10px}
+.choice{
+  background:var(--sky);color:var(--ink);box-shadow:0 4px 0 var(--blue);
+  text-align:left;padding:12px 18px;border-radius:20px;font-weight:500;
+}
+.choice.picked{background:var(--blue);color:#fff}
+.choice.right{background:var(--good);color:#fff;box-shadow:0 4px 0 #2b8467}
+.choice.wrong{background:var(--bad);color:#fff;box-shadow:0 4px 0 #b84e68}
+.choices.locked .choice{cursor:default;pointer-events:none}
+.feedback{margin-top:16px}
+.sticker{width:140px;height:140px;object-fit:contain;display:block;margin:0 auto}
+.sticker-fallback{font-size:5rem;line-height:1}
+.msg{font-size:1.25rem;font-weight:600}
+.msg.good{color:var(--good)} .msg.bad{color:var(--bad)}
+.score{font-size:3.4rem;font-weight:600;color:var(--deep);margin:4px 0}
+.note{background:var(--pink);border-radius:18px;padding:12px 16px;font-weight:500;margin-top:14px}
+.err{color:var(--bad);min-height:1.3em;font-size:.95rem}
+@media (max-width:480px){
+  body{padding-left:12px;padding-right:12px}
+  .card{padding:22px 16px;border-radius:26px;border-width:3px;box-shadow:0 7px 0 var(--blue)}
+  h1{font-size:1.7rem}
+  input{font-size:16px;padding:14px 16px}      /* 16px stops iPhone from zooming in */
+  .q{font-size:1.2rem}
+  .choice{padding:14px 16px;min-height:52px;font-size:1.05rem}
+  #go,#next{width:100%;padding:14px 20px}
+  .sticker{width:110px;height:110px}
+  .sticker-fallback{font-size:4rem}
+  .score{font-size:3rem}
+  .c1{top:3%;left:-20px;transform:scale(.7);transform-origin:left top}
+  .c2{bottom:3%;right:-20px;transform:scale(.8)}
+}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<div class="cloud c1"></div>
+<div class="cloud c2"></div>
+<main class="card">
+
+  <!-- START -->
+  <section id="start">
+    <h1>Cloud Quiz</h1>
+    <p>Type your name like this: <b>LAST NAME, FIRST NAME MI</b><br>Example: <b>DELA CRUZ, JUAN P.</b></p>
+    <p>Each question has a countdown, so answer before time runs out. You can only take the quiz once.</p>
+    <input id="name" placeholder="LAST NAME, FIRST NAME MI" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="60">
+    <div class="err" id="err"></div>
+    <button id="go">Start quiz</button>
+  </section>
+
+  <!-- QUESTION -->
+  <section id="quiz" class="hidden">
+    <div class="top"><span id="count"></span><span id="time"></span></div>
+    <div class="bar"><i id="fill"></i></div>
+    <div class="q" id="qtext"></div>
+    <div class="choices" id="choices"></div>
+    <div class="feedback hidden" id="fb">
+      <!-- STICKER SPOT: put your images at images/happy.png and images/sad.png -->
+      <img class="sticker" id="sticker" alt="">
+      <div class="sticker-fallback hidden" id="stickerFallback"></div>
+      <div class="msg" id="msg"></div>
+      <p id="ans"></p>
+      <button id="next">Next</button>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section id="result" class="hidden">
+    <h1>All done!</h1>
+    <p id="who"></p>
+    <div class="score" id="score"></div>
+    <div class="note">Don't forget to screenshot your score, just in case.</div>
+  </section>
+
+</main>
+
+<script>
+/* =====================  SETTINGS (edit here only)  ===================== */
+const HAPPY_STICKER = "images/happy.png";
+const SAD_STICKER   = "images/sad.png";
+const PRAISE = ["Amazing! You got it right!", "Yay, correct! Great job!", "So smart! Keep going!"];
+const SAD    = ["Aww, not this time...", "Oh no, that's not it.", "Don't worry, you'll get the next one!"];
+
+/* Questions and choices only. The answers are NOT here: they live in Netlify (ANSWERS).
+   The timer (SECONDS) also lives in Netlify. */
+const QUESTIONS = [
+  { text: "What does LIFO mean in a stack?", choices: ["The first item added is removed first", "The last item added is removed first", "Items are removed in random order", "Items are removed from the middle"] },
+  { text: "Which is an everyday example of a stack?", choices: ["People waiting in line at a hiking summit", "A print spooler sending jobs in order", "A pile of plates where you take the top dish first", "CPU scheduling"] },
+  { text: "Which stack operation returns the top element WITHOUT removing it?", choices: ["Peek()", "Pop()", "Push(x)", "isEmpty()"] },
+  { text: "How fast is inserting or removing the top element of a stack?", choices: ["O(n)", "O(log n)", "O(n²)", "O(1)"] },
+  { text: "Which pair of operations belongs to a queue?", choices: ["Push and Pop", "Peek and isEmpty", "Enqueue and Dequeue", "Insert and Pop"] },
+  { text: "Which traversal method is paired with a queue?", choices: ["Depth-First Search", "Breadth-First Search", "Postfix evaluation", "Bracket parsing"] },
+  { text: "What is the job of the base case in recursion?", choices: ["Makes the input smaller on each call", "Stores the suspended stack frames", "Converts infix formulas to postfix", "Stops the recursion without another self-call"] }
+];
+/* ====================================================================== */
+
+const NAME_RE = /^[A-ZÑ][A-ZÑ'.\- ]*, [A-ZÑ][A-ZÑ'.\- ]* [A-ZÑ]\.?$/;
+const cleanName = raw => raw.trim().replace(/\s+/g, " ").toUpperCase();
+const $ = id => document.getElementById(id);
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const show = id => ["start","quiz","result"].forEach(s => $(s).classList.toggle("hidden", s !== id));
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+let sid = null, seconds = 15, total = QUESTIONS.length, studentName = "", index = 0;
+let chosen = null, timer = null, left = 0, finished = false, isLast = false, lastScore = 0, needRetry = false;
+
+async function api(body) {
+  const r = await fetch("/.netlify/functions/quiz", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || "Network problem");
+  return data;
+}
+
+$("go").onclick = async () => {
+  studentName = cleanName($("name").value);
+  if (!NAME_RE.test(studentName)) {
+    $("err").textContent = "Please use the format LAST NAME, FIRST NAME MI (example: DELA CRUZ, JUAN P.)";
+    return;
+  }
+  $("go").disabled = true; $("err").textContent = "Starting...";
+  try {
+    const d = await api({ action: "start", name: studentName });
+    sid = d.sid; studentName = d.name; seconds = d.seconds; total = d.total; index = 0;
+    $("err").textContent = ""; show("quiz"); showQuestion();
+  } catch (e) {
+    $("err").textContent = (e instanceof TypeError)
+      ? "Can't connect. Check your internet and try again."
+      : e.message;
+  }
+  $("go").disabled = false;
+};
+
+function showQuestion() {
+  const q = QUESTIONS[index];
+  chosen = null; finished = false; isLast = false; needRetry = false; left = seconds;
+  $("count").textContent = `Question ${index + 1} of ${total}`;
+  $("qtext").textContent = q.text;
+  $("fb").classList.add("hidden");
+  window.scrollTo(0, 0);
+  const box = $("choices"); box.className = "choices"; box.innerHTML = "";
+  q.choices.forEach((c, i) => {
+    const b = document.createElement("button");
+    b.className = "choice"; b.textContent = c;
+    b.onclick = () => lockIn(i);
+    box.appendChild(b);
+  });
+  const fill = $("fill");
+  fill.style.transition = "none"; fill.style.width = "100%";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    fill.style.transition = "width " + seconds + "s linear"; fill.style.width = "0%";
+  }));
+  $("time").textContent = left + "s";
+  clearInterval(timer);
+  timer = setInterval(() => {
+    left--; $("time").textContent = Math.max(left, 0) + "s";
+    if (left <= 0) reveal();
+  }, 1000);
+}
+
+/* The pick locks right away; the reveal waits for the countdown. */
+function lockIn(i) {
+  if (chosen !== null || finished) return;
+  chosen = i;
+  const box = $("choices"); box.classList.add("locked");
+  box.children[i].classList.add("picked");
+}
+
+async function reveal() {
+  if (finished) return;
+  finished = true; clearInterval(timer);
+  $("choices").classList.add("locked"); $("time").textContent = "...";
+  let d = null;
+  for (let n = 0; n < 3 && !d; n++) {
+    try { d = await api({ action: "answer", name: studentName, sid, index, choice: chosen }); }
+    catch (e) { if (n < 2) await wait(1500); }
+  }
+  if (!d) {   // no connection: let the student retry without losing their pick
+    needRetry = true;
+    $("sticker").classList.add("hidden"); $("stickerFallback").classList.add("hidden");
+    $("msg").textContent = "Connection problem. Check your internet, then tap Try again.";
+    $("msg").className = "msg bad"; $("ans").textContent = "";
+    $("next").textContent = "Try again"; $("fb").classList.remove("hidden");
+    return;
+  }
+  const correct = d.correct, ok = d.ok;
+  isLast = d.done; lastScore = d.score;
+  [...$("choices").children].forEach((el, i) => {
+    el.classList.remove("picked");
+    if (i === correct) el.classList.add("right");
+    else if (i === chosen) el.classList.add("wrong");
+  });
+  $("msg").textContent = ok ? pick(PRAISE) : (chosen === null ? "Time's up! " : "") + pick(SAD);
+  $("msg").className = "msg " + (ok ? "good" : "bad");
+  $("ans").textContent = "Correct answer: " + (QUESTIONS[index].choices[correct] ?? "-");
+  setSticker(ok);
+  $("next").textContent = isLast ? "See my score" : "Next question";
+  $("fb").classList.remove("hidden");
+  $("fb").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function setSticker(ok) {
+  const img = $("sticker"), fallback = $("stickerFallback");
+  img.classList.remove("hidden"); fallback.classList.add("hidden");
+  img.onerror = () => {
+    img.classList.add("hidden");
+    fallback.textContent = ok ? "☁️💙" : "☁️💧";
+    fallback.classList.remove("hidden");
+  };
+  img.src = ok ? HAPPY_STICKER : SAD_STICKER;
+}
+
+$("next").onclick = async () => {
+  if (needRetry) { needRetry = false; finished = false; $("fb").classList.add("hidden"); reveal(); return; }
+  if (isLast) {
+    show("result");
+    $("who").textContent = studentName;
+    $("score").textContent = `${lastScore} / ${total}`;
+    return;
+  }
+  $("next").disabled = true;
+  try { await api({ action: "next", name: studentName, sid, index }); index++; showQuestion(); }
+  catch (e) { $("msg").textContent = "Connection problem. Tap Next again."; $("msg").className = "msg bad"; }
+  $("next").disabled = false;
+};
+</script>
+
+</body>
+</html>
